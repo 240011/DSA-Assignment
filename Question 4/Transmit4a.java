@@ -45,10 +45,10 @@
 
 import java.util.*;
 
-public class Question4a {
+public class Transmit4a {
     private final Map<Integer, List<int[]>> graph;
 
-    public Question4a(int n, int[][] links) {
+    public Transmit4a(int n, int[][] links) {
         graph = new HashMap<>();
         for (int i = 0; i < n; i++) {
             graph.put(i, new ArrayList<>());
@@ -91,7 +91,7 @@ public class Question4a {
             {4, 5, 5}
         };
 
-        Question4a st = new Question4a(6, links);
+        Transmit4a st = new Transmit4a(6, links);
 
         System.out.println(st.canTransmit(2, 3, 2)); // true
         System.out.println(st.canTransmit(1, 3, 3)); // false
