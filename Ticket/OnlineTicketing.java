@@ -45,14 +45,14 @@
 //  Refund and Cancellation Handling: Allow users to cancel bookings and free up seats.
 
 
-
 package Ticket;
+
 import java.awt.*;
 import java.util.*;
 import java.util.concurrent.*;
 import javax.swing.*;
 
-// Booking Request Object
+// Booking Request Object to hold user ID and desired seat number
 class BookingRequest {
     String userId;
     int seatNumber;
@@ -63,28 +63,31 @@ class BookingRequest {
     }
 }
 
-// Seat Manager with Locking Strategies
+// Seat Manager handles booking logic with both pessimistic and optimistic locking
 class SeatManager {
-    Map<Integer, Boolean> seats = new ConcurrentHashMap<>();
-    final Object lock = new Object();
+    Map<Integer, Boolean> seats = new ConcurrentHashMap<>(); // Map of seat number to booking status
+    final Object lock = new Object(); // Shared lock object for synchronization
 
     public SeatManager(int totalSeats) {
+        // Initialize all seats as unbooked
         for (int i = 1; i <= totalSeats; i++) seats.put(i, false);
     }
 
+    // Pessimistic locking: Lock is acquired before checking and booking
     public boolean bookSeatPessimistic(int seatNumber) {
         synchronized (lock) {
             if (!seats.get(seatNumber)) {
-                seats.put(seatNumber, true);
+                seats.put(seatNumber, true); // Book seat
                 return true;
             }
-            return false;
+            return false; // Seat already booked
         }
     }
 
+    // Optimistic locking: Try without locking, and retry under lock if necessary
     public boolean bookSeatOptimistic(int seatNumber) {
         if (!seats.get(seatNumber)) {
-            if (Math.random() > 0.2) { // simulate conflict
+            if (Math.random() > 0.2) { // Simulate 80% chance of no conflict
                 synchronized (lock) {
                     if (!seats.get(seatNumber)) {
                         seats.put(seatNumber, true);
@@ -93,15 +96,16 @@ class SeatManager {
                 }
             }
         }
-        return false;
+        return false; // Booking failed due to conflict or seat already booked
     }
 
+    // Returns current seat booking status
     public Map<Integer, Boolean> getSeats() {
         return seats;
     }
 }
 
-// Booking Processor Thread
+// Runnable processor that handles booking requests from a queue
 class BookingProcessor implements Runnable {
     BlockingQueue<BookingRequest> queue;
     SeatManager manager;
@@ -126,20 +130,24 @@ class BookingProcessor implements Runnable {
     public void run() {
         while (!queue.isEmpty()) {
             try {
-                BookingRequest request = queue.take();
+                BookingRequest request = queue.take(); // Take request from queue
+
+                // Book seat using selected strategy
                 boolean success = useOptimistic
                     ? manager.bookSeatOptimistic(request.seatNumber)
                     : manager.bookSeatPessimistic(request.seatNumber);
 
+                // Generate result message
                 String msg = "User " + request.userId + " tried Seat " + request.seatNumber +
                     " → " + (success ? "✅ Booked" : "❌ Failed") + "\n";
 
+                // Update log and seat display in UI thread
                 SwingUtilities.invokeLater(() -> {
                     logArea.append(msg);
                     updateDisplay.run();
                 });
 
-                Thread.sleep(200); // simulate delay
+                Thread.sleep(200); // Simulate processing delay
             } catch (InterruptedException e) {
                 Thread.currentThread().interrupt();
             }
@@ -147,14 +155,14 @@ class BookingProcessor implements Runnable {
     }
 }
 
-// Main GUI
+// Main GUI class for the Online Ticket Booking System
 public class OnlineTicketing extends JFrame {
-    SeatManager seatManager = new SeatManager(40);
+    SeatManager seatManager = new SeatManager(40); // 40 total seats
     BlockingQueue<BookingRequest> bookingQueue = new LinkedBlockingQueue<>();
-    boolean useOptimisticLocking = true;
+    boolean useOptimisticLocking = true; // Default locking strategy
 
-    JTextArea statusArea = new JTextArea(20, 30);
-    JTextArea logArea = new JTextArea(10, 30);
+    JTextArea statusArea = new JTextArea(20, 30); // Displays seat status
+    JTextArea logArea = new JTextArea(10, 30);    // Displays booking log
 
     public OnlineTicketing() {
         super("🎟️ Online Ticket Booking System");
@@ -162,11 +170,13 @@ public class OnlineTicketing extends JFrame {
         statusArea.setEditable(false);
         logArea.setEditable(false);
 
+        // Buttons and label for controls
         JButton simulateBtn = new JButton("Simulate Bookings");
         JButton processBtn = new JButton("Process Bookings");
         JButton toggleBtn = new JButton("Toggle Locking");
         JLabel lockLabel = new JLabel("🔒 Mode: Optimistic");
 
+        // Simulate 10 random booking requests
         simulateBtn.addActionListener(_ -> {
             for (int i = 1; i <= 10; i++) {
                 int seat = (int)(Math.random() * 40) + 1;
@@ -174,6 +184,7 @@ public class OnlineTicketing extends JFrame {
             }
         });
 
+        // Start booking processor thread
         processBtn.addActionListener(_ -> {
             new Thread(new BookingProcessor(
                 bookingQueue,
@@ -184,12 +195,14 @@ public class OnlineTicketing extends JFrame {
             )).start();
         });
 
+        // Toggle locking mode between Optimistic and Pessimistic
         toggleBtn.addActionListener(_ -> {
             useOptimisticLocking = !useOptimisticLocking;
             lockLabel.setText("🔒 Mode: " +
                 (useOptimisticLocking ? "Optimistic" : "Pessimistic"));
         });
 
+        // Organize GUI layout
         JPanel controlPanel = new JPanel();
         controlPanel.add(simulateBtn);
         controlPanel.add(processBtn);
@@ -203,14 +216,16 @@ public class OnlineTicketing extends JFrame {
         add(controlPanel, BorderLayout.NORTH);
         add(textPanel, BorderLayout.CENTER);
 
-        refreshSeatDisplay();
+        refreshSeatDisplay(); // Initial seat status display
 
+        // Window setup
         setSize(500, 600);
         setDefaultCloseOperation(EXIT_ON_CLOSE);
         setLocationRelativeTo(null);
         setVisible(true);
     }
 
+    // Updates seat status area in the UI
     void refreshSeatDisplay() {
         StringBuilder sb = new StringBuilder();
         seatManager.getSeats().forEach((k, v) ->
@@ -220,6 +235,7 @@ public class OnlineTicketing extends JFrame {
     }
 
     public static void main(String[] args) {
+        // Launch the GUI on the Swing UI thread
         SwingUtilities.invokeLater(OnlineTicketing::new);
     }
 }
