@@ -1,5 +1,5 @@
-import javax.swing.*;
 import java.awt.*;
+import javax.swing.*;
 
 public class MazeSolver {
     public static void main(String[] args) {
@@ -31,3 +31,13 @@ public class MazeSolver {
         });
     }
 }
+/*
+ * This is the main entry point for the Maze Solver application.
+ * It creates a GUI window using Swing with a maze display panel and control buttons.
+ * Users can:
+ *  - Solve the maze using DFS (Depth-First Search)
+ *  - Solve the maze using BFS (Breadth-First Search)
+ *  - Generate a new random maze
+ * 
+ * The application runs on the Swing event dispatch thread to ensure thread-safe UI operations.
+ */
